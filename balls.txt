@@ -1,0 +1,166 @@
+// Base class
+class Ball {
+  constructor(x, y, r) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.color = [255, 0, 0]; // Red
+    this.xSpeed = random(-2, 2);
+    this.ySpeed = random(-2, 2);
+  }
+  
+  display() {
+    fill(this.color);
+    ellipse(this.x, this.y, this.r * 2);
+  }
+  
+  move() {
+    this.x += this.xSpeed;
+    this.y += this.ySpeed; 
+    this.checkBoundaries();
+  }
+  
+  checkBoundaries() {
+    // Simplified horizontal and vertical boundary check
+    if (this.x < this.r || this.x > width - this.r) {
+      this.xSpeed *= -1;
+      this.x = constrain(this.x, this.r, width - this.r);
+    }
+    
+    if (this.y < this.r || this.y > height - this.r) {
+      this.ySpeed *= -1;
+      this.y = constrain(this.y, this.r, height - this.r);
+    }
+  }
+}
+
+// BouncingBall subclass
+class BouncingBall extends Ball {
+  constructor(x, y, r, xSpeed, ySpeed) {
+    super(x, y, r);
+    this.xSpeed = xSpeed;
+    this.ySpeed = ySpeed;
+    this.color = [0, 0, 255]; // Blue
+  }
+}
+
+// GravityBall subclass
+class GravityBall extends Ball {
+  constructor(x, y, r) {
+    super(x, y, r);
+    this.velocity = createVector(random(-1, 1), 0);
+    this.acceleration = createVector(0, 0.2);
+    this.damping = 0.85;
+    this.color = [255, 150, 0]; // Orange
+  }
+  
+  move() {
+    this.velocity.add(this.acceleration);
+    this.x += this.velocity.x;
+    this.y += this.velocity.y;
+    this.checkBoundaryCollision();
+  }
+  
+  checkBoundaryCollision() {
+    // Simplified horizontal boundary check
+    if (this.x < this.r || this.x > width - this.r) {
+      this.velocity.x *= -this.damping;
+      this.x = constrain(this.x, this.r, width - this.r);
+    }
+    
+    // Simplified vertical boundary check
+    if (this.y > height - this.r) {
+      this.y = height - this.r;
+      this.velocity.y *= -this.damping;
+      this.velocity.x *= 0.99; // Ground friction
+      
+      // Prevent infinite small bounces
+      if (abs(this.velocity.y) < 0.1) this.velocity.y = 0;
+    } else if (this.y < this.r) {
+      this.y = this.r;
+      this.velocity.y *= -this.damping;
+    }
+  }
+  
+  display() {
+    let speed = this.velocity.mag();
+    let brightness = map(speed, 0, 10, 100, 255);
+    fill(this.color[0], this.color[1], this.color[2], brightness);
+    ellipse(this.x, this.y, this.r * 2);
+  }
+  
+  applyForce(force) {
+    this.velocity.add(force);
+  }
+}
+
+// Global variables
+let balls = [];
+let ballTypes = ['Bouncing', 'Gravity'];
+let currentType = 1; // Default to create gravity balls
+
+function setup() {
+  createCanvas(600, 400);
+  
+  // Create initial balls
+  for (let i = 0; i < 5; i++) {
+    createBall(random(width), random(height));
+  }
+  
+  // Create UI prompt
+  createElement('p', 'Click screen to add balls | Press 1 for Bouncing, 2 for Gravity');
+  createElement('p', 'Press SPACE to apply upward force to gravity balls | Press R to reset');
+}
+
+function draw() {
+  background(220);
+  
+  // Display current ball type
+  fill(0);
+  textSize(16);
+  textAlign(LEFT, TOP);
+  text("Current type: " + ballTypes[currentType], 10, 10);
+  
+  // Update and display all balls
+  for (let ball of balls) {
+    ball.move();
+    ball.display();
+  }
+}
+
+function mousePressed() {
+  createBall(mouseX, mouseY);
+}
+
+function keyPressed() {
+  // Switch ball type
+  if (key === '1') currentType = 0;
+  if (key === '2') currentType = 1;
+  
+  // Give all gravity balls an upward force
+  if (key === ' ') {
+    for (let ball of balls) {
+      if (ball instanceof GravityBall) {
+        ball.applyForce(createVector(0, -5));
+      }
+    }
+  }
+  
+  // Press 'r' to reset all balls
+  if (key === 'r' || key === 'R') {
+    balls = [];
+    for (let i = 0; i < 5; i++) {
+      createBall(random(width), random(height));
+    }
+  }
+}
+
+function createBall(x, y) {
+  // Create different balls based on current type
+  if (currentType === 0) {
+    balls.push(new BouncingBall(x, y, random(10, 20), 
+                               random(-3, 3), random(-3, 3)));
+  } else if (currentType === 1) {
+    balls.push(new GravityBall(x, y, random(10, 20)));
+  }
+}
